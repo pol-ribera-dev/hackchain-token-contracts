@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.24;
+
+import "forge-std/Test.sol";
+import "../src/HackTokenERC20.sol";
+import "../src/IncentivesPool.sol";
+import "../src/StakingContract.sol";
+
+contract StakingTest is Test {
+
+    HackToken _hacktoken;
+    IncentivesPool _pool;
+    StakingContract _staking;
+
+
+    /// @notice The contract owner (admin).
+    address public admin = vm.addr(1);
+
+    /// @notice Random user (not the owner).
+    address public randomUser = vm.addr(2);
+
+    /// @notice Deploys the HackToken contract, the Pool contract and the StakingContract
+    function setUp() public {
+        vm.startPrank(admin);
+        _hacktoken = new HackToken();
+        _pool = new IncentivesPool(address(_hacktoken));
+        _staking = new StakingContract(address(_hacktoken), address(_pool));
+        _pool.grantRole(_pool.DISTRIBUTOR_ROLE(), address(_staking));
+        vm.stopPrank();
+    }
+
+    // Rendimientos adicionales a través de finanzas descentralizadas
+    // M1
+    function testStakeCorrect() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(admin, 1500 * 1e18);
+        _hacktoken.approve(address(_pool), 1500 * 1e18);
+        _pool.fundPool(1500 * 1e18);
+        _hacktoken.mintTokens(randomUser, 11000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_staking), 11000 * 1e18);
+
+        _staking.stake(1000 * 1e18, 30 days);
+        _staking.stake(10000 * 1e18, 365 days);
+
+        vm.warp(block.timestamp + 367 days);
+
+        assert(_hacktoken.balanceOf(randomUser) == 0);
+
+        _staking.unstake(0);
+
+        assert(_hacktoken.balanceOf(randomUser) == 1050 * 1e18);
+
+        _staking.unstake(1);
+
+        assert(_hacktoken.balanceOf(randomUser) == (11000 + 1050) * 1e18);
+
+        vm.stopPrank();
+    }
+
+    //M6
+
+    function testComisionsCorrect() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 100000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+       
+        _hacktoken.approve(address(_staking), 100000 * 1e18);
+        _staking.stake(100000 * 1e18, 365 days);
+        _staking.activateNoCommission();
+        
+        assertTrue(_staking.hasNoCommission(randomUser));
+
+        vm.stopPrank();
+    }
+
+
+}
