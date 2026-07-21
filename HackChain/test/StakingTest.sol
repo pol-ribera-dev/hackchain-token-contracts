@@ -250,12 +250,59 @@ contract StakingTest is Test {
        
         _hacktoken.approve(address(_staking), 100000 * 1e18);
         _staking.stake(100000 * 1e18, 365 days);
+
         _staking.activateNoCommission();
-        
         assertTrue(_staking.hasNoCommission(randomUser));
+
+        _staking.deactivateNoCommission();
+        assertFalse(_staking.hasNoCommission(randomUser));
 
         vm.stopPrank();
     }
 
+    function testNoCommissionAlreadyActive() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 100000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _hacktoken.approve(address(_staking), 100000 * 1e18);
+        _staking.stake(100000 * 1e18, 365 days);
+        _staking.activateNoCommission();
+        vm.expectRevert(StakingContract.NoCommissionAlreadyActive.selector);        
+        _staking.activateNoCommission();
+        
+        vm.stopPrank();
+    }
+
+    function testNoCommissionNotEligible() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 100000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        vm.expectRevert(StakingContract.NoCommissionNotEligible.selector);        
+        _staking.activateNoCommission();
+        
+        vm.stopPrank();
+    }
+
+    function testNoCommissionNotActive() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 100000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        vm.expectRevert(StakingContract.NoCommissionNotActive.selector);        
+        _staking.deactivateNoCommission();
+        
+        vm.stopPrank();
+    }
 
 }

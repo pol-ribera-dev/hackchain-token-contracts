@@ -56,7 +56,57 @@ contract BonusTest is Test {
         
     }
 
-    
+    function testBonusTwoDegreeCorrect() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 500000 * 1e18);
+        _hacktoken.approve(address(_pool), 500000 * 1e18);
+        _pool.fundPool(500000 * 1e18);
+
+        uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+
+        _bonus.rewardSchoolingDegree(randomUser, keccak256("ESO"));
+        _bonus.rewardSchoolingDegree(randomUser, keccak256("master"));
+        
+        uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+
+        assertEq(amountBeforeUser + 100000 * 1e18, amountAfterUser);
+
+        vm.stopPrank();
+        
+    }
+
+    function testBonusDegreeInvalidAddress() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 50000 * 1e18);
+        _hacktoken.approve(address(_pool), 50000 * 1e18);
+        _pool.fundPool(50000 * 1e18);
+
+        vm.expectRevert(TalentBonuses.InvalidAddress.selector);
+        _bonus.rewardSchoolingDegree(address(0), keccak256("master"));
+
+        vm.stopPrank();
+    }
+
+    function testBonusDegreeAlreadyRewarded() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 50000 * 1e18);
+        _hacktoken.approve(address(_pool), 50000 * 1e18);
+        _pool.fundPool(50000 * 1e18);
+
+        _bonus.rewardSchoolingDegree(randomUser, keccak256("master"));
+        vm.expectRevert(TalentBonuses.DegreeAlreadyRewarded.selector);
+        _bonus.rewardSchoolingDegree(randomUser, keccak256("master"));
+
+        vm.stopPrank();
+        
+    }
+
     //M11
     function testBonusHiredCorrect() external {
 

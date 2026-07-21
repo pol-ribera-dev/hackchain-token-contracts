@@ -48,6 +48,48 @@ contract RewardTest is Test {
         
     }
 
+    function testRewardInvalidAddress() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 30000 * 1e18);
+        _hacktoken.approve(address(_pool), 30000 * 1e18);
+        _pool.fundPool(30000 * 1e18);
+
+        vm.expectRevert(EventRewards.InvalidAddress.selector);
+        _reward.rewardPromoEvent(address(0), keccak256("talk"), 13);
+
+        vm.stopPrank();
+    }
+
+    function testRewardNotEnoughAttendees() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 30000 * 1e18);
+        _hacktoken.approve(address(_pool), 30000 * 1e18);
+        _pool.fundPool(30000 * 1e18);
+
+        vm.expectRevert(EventRewards.NotEnoughAttendees.selector);
+        _reward.rewardPromoEvent(randomUser, keccak256("talk"), 7);
+
+        vm.stopPrank();
+    }
+
+    function testRewardAlreadyRewarded() external {
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 30000 * 1e18);
+        _hacktoken.approve(address(_pool), 30000 * 1e18);
+        _pool.fundPool(30000 * 1e18);
+
+        _reward.rewardPromoEvent(randomUser, keccak256("talk"), 13);
+        vm.expectRevert(EventRewards.PromoEventAlreadyRewarded.selector);
+        _reward.rewardPromoEvent(randomUser, keccak256("talk"), 13);
+
+        vm.stopPrank();
+    }
+    
 
     //M10
     function testGo4EventsCorrect() external {
