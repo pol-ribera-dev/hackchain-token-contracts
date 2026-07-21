@@ -130,6 +130,65 @@ contract BonusTest is Test {
         
     }
 
+    function testBonusHiredInvalidAddress() external {
+
+        vm.warp(block.timestamp + 100 days);
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 5000 * 1e18);
+        _hacktoken.approve(address(_pool), 5000 * 1e18);
+        _pool.fundPool(5000 * 1e18);
+
+        vm.expectRevert(TalentBonuses.InvalidAddress.selector);
+        _bonus.rewardTalentHired(address(0));
+
+        vm.stopPrank();
+        
+    }
+
+    function testBonusHiredSameMonth() external {
+
+        vm.warp(block.timestamp + 100 days);
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 5000 * 1e18);
+        _hacktoken.approve(address(_pool), 5000 * 1e18);
+        _pool.fundPool(5000 * 1e18);
+
+        _bonus.rewardTalentHired(randomUser);
+        vm.expectRevert(TalentBonuses.HiringAlreadyRewardedThisMonth.selector);
+        _bonus.rewardTalentHired(randomUser);
+
+        vm.stopPrank();
+    }
+
+    function testBonusHiredDiferentMonthCorrect() external {
+
+        vm.warp(block.timestamp + 100 days);
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 50000 * 1e18);
+        _hacktoken.approve(address(_pool), 50000 * 1e18);
+        _pool.fundPool(50000 * 1e18);
+
+        uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+
+        _bonus.rewardTalentHired(randomUser);
+        vm.warp(block.timestamp + 31 days);
+        _bonus.rewardTalentHired(randomUser);
+
+        uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+
+        assertEq(amountBeforeUser + 10000 * 1e18, amountAfterUser);
+
+        vm.stopPrank();
+        
+    }
+
+
     //M23
 
     function testGitHubCorrect() external {

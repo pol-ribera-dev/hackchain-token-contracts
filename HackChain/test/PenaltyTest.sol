@@ -55,10 +55,6 @@ contract PenaltyTest is Test {
 
     function testPenaltyIdentityInvalidAddress() external {
 
-        vm.startPrank(randomUser);
-        _hacktoken.approve(address(_penalty), 10000 * 1e18);
-        vm.stopPrank();
-
         vm.startPrank(admin);
         
         vm.expectRevert(PenaltySystem.InvalidAddress.selector);
@@ -67,11 +63,7 @@ contract PenaltyTest is Test {
         vm.stopPrank();
     }
 
-    function testPenaltyIdentityNotGreaterThanZero() external {
-
-        vm.startPrank(randomUser);
-        _hacktoken.approve(address(_penalty), 10000 * 1e18);
-        vm.stopPrank();
+    function testPenaltyIdentityAmountMustBeGreaterThanZero() external {
 
         vm.startPrank(admin);
         
@@ -107,14 +99,9 @@ contract PenaltyTest is Test {
         vm.stopPrank();
     }
 
-    // amb 8000 no ha revertit
     function testPenaltySaleInvalidAddress() external {
         
         uint tokensSale = 8000 * 1e18; 
-
-        vm.startPrank(randomUser);
-        _hacktoken.approve(address(_penalty), 10000 * 1e18);
-        vm.stopPrank();
 
         vm.startPrank(admin);
         
@@ -136,6 +123,22 @@ contract PenaltyTest is Test {
         
         vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);
         _penalty.applyMassSalePenalty(randomUser, 0, 100000 * 1e18);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltySaleVeryLowNumbers() external {
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 2);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(randomUser, 2);
+        
+        vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);
+        _penalty.applyMassSalePenalty(randomUser, 1 , 3);
 
         vm.stopPrank();
     }
@@ -190,11 +193,35 @@ contract PenaltyTest is Test {
         _hacktoken.mintTokens(randomUser, 10000 * 1e18);
         
         uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        uint amountBeforePool = _pool.actualBalance();
         _penalty.applyNoShowPenalty(randomUser);
         uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+        uint amountAfterPool = _pool.actualBalance();
 
         assertEq(amountBeforeUser * 95/100, amountAfterUser);
+        assertEq(amountAfterPool - amountBeforePool,  amountBeforeUser * 5/100);
 
+        vm.stopPrank();
+    }
+
+    function testPenaltyNoShowInvalidAddress() external {
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.InvalidAddress.selector);   
+        _penalty.applyNoShowPenalty(address(0));
+        
+        vm.stopPrank();
+    }
+
+    function testPenaltyNoShowAmountMustBeGreaterThanZero() external {
+
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);   
+        _penalty.applyNoShowPenalty(randomUser);
+        
         vm.stopPrank();
     }
 

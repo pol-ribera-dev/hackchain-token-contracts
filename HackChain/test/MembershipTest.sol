@@ -122,7 +122,61 @@ contract StakingTest is Test {
         assertEq(amountBeforeUser, amountAfterUser + 30000 * 1e18);
         assertEq(amountBeforeTresury + 15000 * 1e18, amountAfterTresury);
         vm.stopPrank();
-        // Falta comprovar educadors
+    }
+
+    function testMembershipInvalidTier() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 30000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _hacktoken.approve(address(_membership), 30000 * 1e18);
+
+        vm.expectRevert(MembershipSystem.InvalidTier.selector);
+        _membership.activateAcademicMembership(MembershipSystem.AcademicTier.None);
+
+        vm.stopPrank();
+    }
+
+    function testMembershipAlreadyActive() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 30000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _hacktoken.approve(address(_membership), 30000 * 1e18);
+
+        _membership.activateAcademicMembership(MembershipSystem.AcademicTier.Monthly);
+        vm.expectRevert(MembershipSystem.MembershipAlreadyActive.selector);
+        _membership.activateAcademicMembership(MembershipSystem.AcademicTier.Annual);
+
+        vm.stopPrank();
+    }
+
+    function testMembershipExpiredCorrect() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 400000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _hacktoken.approve(address(_membership), 400000 * 1e18);
+
+        uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+
+        _membership.activateAcademicMembership(MembershipSystem.AcademicTier.Monthly);
+        vm.warp(block.timestamp + 31 days);
+        _membership.activateAcademicMembership(MembershipSystem.AcademicTier.Annual);
+
+        uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+
+        assertEq(amountBeforeUser, amountAfterUser + 360000 * 1e18);
+        vm.stopPrank();
     }
 
 }
