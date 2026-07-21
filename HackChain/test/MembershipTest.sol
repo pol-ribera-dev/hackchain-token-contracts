@@ -63,7 +63,40 @@ contract StakingTest is Test {
         assertEq(amountAfterPool + 1000 * 1e18, amountAfterCancelPool);
 
         vm.stopPrank();
+    }
+
+    function testAdvancedMembershipAlreadyActive() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 110000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _hacktoken.approve(address(_membership), 50000 * 1e18);
+        _membership.activateAdvancedMembership();
         
+
+        _hacktoken.approve(address(_membership), 50000 * 1e18);
+        vm.expectRevert(MembershipSystem.MembershipAlreadyActive.selector);
+        _membership.activateAdvancedMembership();
+
+        vm.stopPrank();
+    }
+
+    function testAdvancedMembershipNotActive() external {
+
+        vm.startPrank(admin);
+        _hacktoken.mintTokens(randomUser, 110000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _hacktoken.approve(address(_membership), 50000 * 1e18);
+        vm.expectRevert(MembershipSystem.MembershipNotActive.selector);
+        _membership.cancelAdvancedMembership();
+
+        vm.stopPrank();
     }
 
     //M13
