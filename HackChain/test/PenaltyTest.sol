@@ -36,28 +36,56 @@ contract PenaltyTest is Test {
         _hacktoken.approve(address(_penalty), 10000 * 1e18);
         vm.stopPrank();
 
-        
         vm.startPrank(admin);
         
         _hacktoken.mintTokens(randomUser, 10000 * 1e18);
         
         uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        uint amountBeforePool = _pool.actualBalance();
         _penalty.applyIdentityFraudPenalty(randomUser);
         uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+        uint amountAfterPool = _pool.actualBalance();
 
-        assertEq(amountBeforeUser * 90/100, amountAfterUser );
-
+        assertEq(amountBeforeUser * 90/100, amountAfterUser);
+        assertEq(amountAfterPool - amountBeforePool,  amountBeforeUser * 10/100);
 
         vm.stopPrank();
         
     }
 
+    function testPenaltyIdentityInvalidAddress() external {
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 10000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.InvalidAddress.selector);
+        _penalty.applyIdentityFraudPenalty(address(0));
+
+        vm.stopPrank();
+    }
+
+    function testPenaltyIdentityNotGreaterThanZero() external {
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 10000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);
+        _penalty.applyIdentityFraudPenalty(randomUser);
+
+        vm.stopPrank();
+    }
 
     // M9
 
     function testPenaltySaleCorrect() external {
         
-        uint tokensSale = 8000 * 1e18; // amb 8000 no ha revertit
+        uint tokensSale = 8000 * 1e18;
 
         vm.startPrank(randomUser);
         _hacktoken.approve(address(_penalty), 10000 * 1e18);
@@ -67,15 +95,87 @@ contract PenaltyTest is Test {
         
         _hacktoken.mintTokens(randomUser, 10000 * 1e18);
         
+        uint amountBeforePool = _pool.actualBalance();
         uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
         _penalty.applyMassSalePenalty(randomUser, tokensSale, 100000 * 1e18);
+        uint amountAfterPool = _pool.actualBalance();
         uint amountAfterUser = _hacktoken.balanceOf(randomUser);
 
         assertEq(amountBeforeUser - amountAfterUser,  tokensSale * 5/100);
-        //comprovar que estiguin en tesoreria
+        assertEq(amountAfterPool - amountBeforePool,  tokensSale * 5/100);
 
         vm.stopPrank();
     }
+
+    // amb 8000 no ha revertit
+    function testPenaltySaleInvalidAddress() external {
+        
+        uint tokensSale = 8000 * 1e18; 
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 10000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.InvalidAddress.selector);
+        _penalty.applyMassSalePenalty(address(0), tokensSale, 100000 * 1e18);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltySaleAmountMustBeGreaterThanZero() external {
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 10000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(randomUser, 10000 * 1e18);
+        
+        vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);
+        _penalty.applyMassSalePenalty(randomUser, 0, 100000 * 1e18);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltySaleNot1Percent() external {
+        
+        uint tokensSale = 1000 * 1e18; 
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 1500 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(randomUser, 1500 * 1e18);
+        
+        vm.expectRevert("User does not hold 1% of supply");
+        _penalty.applyMassSalePenalty(randomUser, tokensSale, 500000 * 1e18);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltySaleNot50PercentOfHoldings() external {
+        
+        uint tokensSale = 8000 * 1e18; 
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 10000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(randomUser, 20000 * 1e18);
+        
+        vm.expectRevert("Sale does not exceed 50% of holdings");
+        _penalty.applyMassSalePenalty(randomUser, tokensSale, 100000 * 1e18);
+
+        vm.stopPrank();
+    }
+
 
     //M14
 

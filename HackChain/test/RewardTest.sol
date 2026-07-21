@@ -117,6 +117,88 @@ contract RewardTest is Test {
         
     }
 
+    function testRegisterInvalidAddress() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        vm.expectRevert(EventRewards.InvalidAddress.selector);
+        _reward.registerTalentAttendance(address(0));
+        
+        vm.stopPrank();
+    }
+
+    function testGo4EventsMonthlyRewardAlreadyClaimed() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _reward.claimTalentAttendanceReward();
+        vm.expectRevert(EventRewards.MonthlyRewardAlreadyClaimed.selector);
+        _reward.claimTalentAttendanceReward();
+
+        vm.stopPrank();
+    }
+
+    function testGo4EventsNotEnoughEventsThisMonth() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        vm.expectRevert(EventRewards.NotEnoughEventsThisMonth.selector);
+        _reward.claimTalentAttendanceReward();
+
+        vm.stopPrank();
+    }
+
+    function testGo4EventsDiferentMonth() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        _reward.registerTalentAttendance(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        _reward.claimTalentAttendanceReward();
+        vm.warp(block.timestamp + 36 days);
+        vm.expectRevert(EventRewards.NotEnoughEventsThisMonth.selector);
+        _reward.claimTalentAttendanceReward();
+
+        vm.stopPrank();
+    }
+
     // M18 
     //First Event
     function testRewardFirstEventCorrect() external {
