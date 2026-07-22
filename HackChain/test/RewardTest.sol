@@ -200,7 +200,6 @@ contract RewardTest is Test {
     }
 
     // M18 
-    //First Event
     function testRewardFirstEventCorrect() external {
 
         vm.startPrank(admin);
@@ -219,6 +218,31 @@ contract RewardTest is Test {
 
         vm.stopPrank();
     }
+
+    function testRewardFirstEventInvalidAddress() external {
+
+        vm.startPrank(admin);
+        vm.expectRevert(EventRewards.InvalidAddress.selector);
+        _reward.rewardEducatorFirstEvent(address(0));
+        vm.stopPrank();
+
+    }
+
+    function testRewardFirstEventAlreadyRewarded() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 5000 * 1e18);
+        _hacktoken.approve(address(_pool), 5000 * 1e18);
+        _pool.fundPool(5000 * 1e18);
+
+        _reward.rewardEducatorFirstEvent(randomUser);
+        vm.expectRevert(EventRewards.FirstEventAlreadyRewarded.selector);
+        _reward.rewardEducatorFirstEvent(randomUser);
+
+        vm.stopPrank();
+    }
+
 
     // M19
     function testCreate4EventsCorrect() external {
@@ -244,6 +268,150 @@ contract RewardTest is Test {
         assertEq(amountBeforeUser + 4000 * 1e18, amountAfterUser);
         vm.stopPrank();
         
+    }
+
+    function testCreate4EventsDiferentMonthCorrect() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        _reward.claimEducatorMonthlyReward();
+        uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+
+        assertEq(amountBeforeUser + 4000 * 1e18, amountAfterUser);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 31 days);
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        _reward.claimEducatorMonthlyReward();
+        amountAfterUser = _hacktoken.balanceOf(randomUser);
+
+        assertEq(amountBeforeUser + 4000 * 1e18, amountAfterUser);
+        vm.stopPrank();
+
+    }
+
+    function testCreate4EventsRegisterInvalidAddress() external {
+
+        vm.startPrank(admin);
+        vm.expectRevert(EventRewards.InvalidAddress.selector);
+        _reward.registerEducatorEvent(address(0));
+        vm.stopPrank();
+        
+    }
+
+    function testCreate4EventsAlreadyClaimed() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 8000 * 1e18);
+        _hacktoken.approve(address(_pool), 8000 * 1e18);
+        _pool.fundPool(8000 * 1e18);
+
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+        _reward.claimEducatorMonthlyReward();
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+        vm.expectRevert(EventRewards.MonthlyRewardAlreadyClaimed.selector);
+        _reward.claimEducatorMonthlyReward();
+        vm.stopPrank();
+        
+    }
+
+    function testCreate4EventsNotEnoughEventsThisMonth() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        vm.expectRevert(EventRewards.NotEnoughEventsThisMonth.selector);
+        _reward.claimEducatorMonthlyReward();
+
+        vm.stopPrank();
+        
+    }
+
+    function testCreate4EventsDiferentMonthNotEnoughEvents() external {
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(admin, 4000 * 1e18);
+        _hacktoken.approve(address(_pool), 4000 * 1e18);
+        _pool.fundPool(4000 * 1e18);
+
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        _reward.registerEducatorEvent(randomUser);
+        vm.stopPrank();
+
+        vm.startPrank(randomUser);
+
+        uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        _reward.claimEducatorMonthlyReward();
+        uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+
+        assertEq(amountBeforeUser + 4000 * 1e18, amountAfterUser);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 31 days);
+
+        vm.startPrank(randomUser);
+        vm.expectRevert(EventRewards.NotEnoughEventsThisMonth.selector);
+        _reward.claimEducatorMonthlyReward();
+        vm.stopPrank();
+
     }
 
 }

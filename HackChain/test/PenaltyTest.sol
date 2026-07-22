@@ -13,7 +13,7 @@ contract PenaltyTest is Test {
     IncentivesPool _pool;
     PenaltySystem _penalty;
 
-    address public tresury  = vm.addr(99);
+    address public treasury  = vm.addr(99);
 
     address public admin = vm.addr(1);
 
@@ -23,7 +23,7 @@ contract PenaltyTest is Test {
         vm.startPrank(admin);
         _hacktoken = new HackToken();
         _pool = new IncentivesPool(address(_hacktoken));
-        _penalty = new PenaltySystem(address(_hacktoken), address(_pool), tresury);
+        _penalty = new PenaltySystem(address(_hacktoken), address(_pool), treasury);
         _pool.grantRole(_pool.DEPOSITOR_ROLE(), address(_penalty));
         vm.stopPrank();
     }
@@ -216,7 +216,6 @@ contract PenaltyTest is Test {
 
     function testPenaltyNoShowAmountMustBeGreaterThanZero() external {
 
-
         vm.startPrank(admin);
         
         vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);   
@@ -226,7 +225,7 @@ contract PenaltyTest is Test {
     }
 
     // M25
-    function testPenaltyNoEventCorrect() external {
+    function testPenaltyInactivityCorrect() external {
 
         vm.startPrank(randomUser);
         _hacktoken.approve(address(_penalty), 10000 * 1e18);
@@ -237,10 +236,33 @@ contract PenaltyTest is Test {
         _hacktoken.mintTokens(randomUser, 10000 * 1e18);
         
         uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        uint amountBeforePool = _pool.actualBalance();
         _penalty.applyEducatorInactivityPenalty(randomUser);
         uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+        uint amountAfterPool = _pool.actualBalance();
 
         assertEq(amountBeforeUser * 95/100, amountAfterUser);
+        assertEq(amountAfterPool - amountBeforePool,  amountBeforeUser * 5/100);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltyInactivityInvalidAddress() external {
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.InvalidAddress.selector);   
+        _penalty.applyEducatorInactivityPenalty(address(0));
+
+        vm.stopPrank();
+    }
+
+    function testPenaltyInactivityAmountMustBeGreaterThanZero() external {
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);   
+        _penalty.applyEducatorInactivityPenalty(randomUser);
 
         vm.stopPrank();
     }
@@ -270,6 +292,66 @@ contract PenaltyTest is Test {
         vm.stopPrank();
     }
 
+    function testPenaltyPlagiarismExternalCorrect() external {
+
+        address randomUser2 = address(3);
+
+        vm.startPrank(randomUser);
+        _hacktoken.approve(address(_penalty), 10000 * 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        
+        _hacktoken.mintTokens(randomUser, 10000 * 1e18);
+        
+        uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        uint amountBeforeTreasury = _hacktoken.balanceOf(treasury);
+        _penalty.applyPlagiarismPenalty(randomUser, randomUser2, true);
+        uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+        uint amountAfterTreasury = _hacktoken.balanceOf(treasury);
+
+        assertEq(amountBeforeUser * 90/100, amountAfterUser);
+        assertEq(amountBeforeTreasury + amountBeforeUser * 10/100, amountAfterTreasury);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltyPlagiarismNoOffender() external {
+
+        address randomUser2 = address(3);
+
+        vm.startPrank(admin);
+
+        vm.expectRevert(PenaltySystem.InvalidAddress.selector);           
+        _penalty.applyPlagiarismPenalty(address(0), randomUser2, false);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltyPlagiarismNoAffected() external {
+
+        address randomUser2 = address(0);
+
+        vm.startPrank(admin);
+
+        vm.expectRevert(PenaltySystem.InvalidAddress.selector);           
+        _penalty.applyPlagiarismPenalty(randomUser, randomUser2, false);
+
+        vm.stopPrank();
+    }
+
+    function testPenaltyPlagiarismAmountMustBeGreaterThanZero() external {
+
+        address randomUser2 = address(3);
+
+        vm.startPrank(admin);
+
+        vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);           
+        _penalty.applyPlagiarismPenalty(randomUser, randomUser2, false);
+
+        vm.stopPrank();
+    }
+
     //M30
     function testPenaltyNoReclutedCorrect() external {
 
@@ -282,14 +364,35 @@ contract PenaltyTest is Test {
         _hacktoken.mintTokens(randomUser, 10000 * 1e18);
         
         uint amountBeforeUser = _hacktoken.balanceOf(randomUser);
+        uint amountBeforePool = _pool.actualBalance();
         _penalty.applyRecruiterInactivityPenalty(randomUser);
         uint amountAfterUser = _hacktoken.balanceOf(randomUser);
+        uint amountAfterPool = _pool.actualBalance();
 
         assertEq(amountBeforeUser * 95/100, amountAfterUser);
+        assertEq(amountAfterPool - amountBeforePool,  amountBeforeUser * 5/100);
 
         vm.stopPrank();
     }
-    
 
+    function testPenaltyNoReclutedInvalidAddress() external {
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.InvalidAddress.selector);           
+        _penalty.applyRecruiterInactivityPenalty(address(0));
+
+        vm.stopPrank();
+    }
+
+    function testPenaltyNoReclutedAmountMustBeGreaterThanZero() external {
+
+        vm.startPrank(admin);
+        
+        vm.expectRevert(PenaltySystem.AmountMustBeGreaterThanZero.selector);           
+        _penalty.applyRecruiterInactivityPenalty(randomUser);
+
+        vm.stopPrank();
+    }
 
 }
